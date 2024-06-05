@@ -1,38 +1,52 @@
 use crate::tokenizer::*;
 
-pub struct Print {
-    word_to_print: String,
-}
+pub struct Print; 
 
 impl FunctionTokenParse for Print {
-    fn parse(current_token: Token, stack: &[Token], stack_position: usize, next: &[u8], cursor: &mut usize) -> Box<dyn FunctionalToken> { 
 
-        let p1 = cursor.clone();
-        let mut p2 = p1+1;
-        if next[p1] as char == '"' {
-            while next[p2] as char != '"' {
-                p2 += 1;
-            }
-        }
+    type ParserContext = ();
 
-        let str_bytes = &next[p1 .. p2];      
+    fn parse(tokenizer: &Tokenizer<Self::ParserContext>, current_token: Token<Self::ParserContext>, stack: &[Token<Self::ParserContext>], next: &[u8], cursor: &mut usize) -> Box<dyn FunctionalToken<ParserContext = Self::ParserContext>> {
+        // let p1 = cursor.clone();
+        // let mut p2 = p1+1;
+        // if next[p1] as char == '"' {
+        //     while next[p2] as char != '"' {
+        //         p2 += 1;
+        //     }
+        // }
 
-        let mut str = String::new();
+        // let str_bytes = &next[p1+1 .. p2];      
 
-        for c in str_bytes {
-            str.push(c.clone() as char);
-        }
+        // let mut str = String::new();
 
-        Box::new(Print {
-            word_to_print: str
-        })
+        // for c in str_bytes {
+        //     str.push(c.clone() as char);
+        // }
 
+        // Box::new(Print {
+        //     word_to_print: str
+        // })
+
+        Box::new(Print)
     }
+
+    
 }
 
 impl FunctionalToken for Print {
-    fn functionality(&self, complete_stack: &[Token]) {
-        println!("{}", self.word_to_print);
+
+    type ParserContext = ();
+
+    fn postprocess(&self, complete_stack: &[Token<Self::ParserContext>], my_index: usize, origin_tree: &mut Tokenizer<Self::ParserContext>) -> Token<Self::ParserContext> {
+        if let Token::Str(s) = &complete_stack[my_index+1] {
+            println!("{}", s);
+        }
+
+        Token::Blank
+    }
+
+    fn as_ctx(self) -> Self::ParserContext {
+        () 
     }
 }
 
