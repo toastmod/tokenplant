@@ -1,14 +1,7 @@
-use tokenizer::{FunctionTokenParse, FunctionalToken, Token, Tokenizer};
+use tokenplant::tokenizer::{self, FunctionTokenParse, Tokenizer};
 
-mod tokenizer;
 mod mips;
 use mips::*;
-
-mod print;
-
-pub fn is_alpha(c: u8) -> bool {
-    ((c >= 97) && (c <= 122)) || ((c >= 64) && (c <= 90))
-}
 
 fn main() {
     let mut tokenizer = Tokenizer::<MIPSCCToken>::default();
