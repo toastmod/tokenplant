@@ -1,27 +1,16 @@
+use print::Print;
 use tokenizer::{FunctionTokenParse, FunctionalToken, Token, Tokenizer};
 
 mod tokenizer;
-mod mips;
-use mips::*;
 
 mod print;
 
-pub fn is_alpha(c: u8) -> bool {
-    ((c >= 97) && (c <= 122)) || ((c >= 64) && (c <= 90))
-}
-
 fn main() {
-    let mut tokenizer = Tokenizer::<MIPSCCToken>::default();
-    // tokenizer.add_def("print", Some(print::Print::parse));
-    // stack.eval(&mut tokenizer);
+    let mut tokenizer = Tokenizer::<()>::default();
     
-    tokenizer.add_def("int", Some(DeclarationToken::parse));
-    tokenizer.add_def("void", Some(DeclarationToken::parse));
-    tokenizer.add_def("(", Some(Parenthesis::parse));
-    // tokenizer.add_def(",", None);
+    tokenizer.add_def("print", Some(Print::parse));
 
-    // let stack = tokenizer.tokenize("print \"hello world\"".as_bytes());
-    let stack = tokenizer.tokenize("int hi (int lol)".as_bytes());
+    let stack = tokenizer.tokenize("print \"hello world\"".as_bytes());
     stack.eval(&mut tokenizer);
     
 
