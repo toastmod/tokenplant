@@ -1,4 +1,6 @@
-use std::{collections::{HashMap, HashSet}, marker::PhantomData, rc::Rc};
+use std::{collections::{HashMap, HashSet}, marker::PhantomData, ops::Range, rc::Rc};
+
+use crate::print;
 
 /// Rules:
 /// - One char tokens don't need space separaton on either side
@@ -55,7 +57,7 @@ pub type TokenHandle = usize;
 pub trait FunctionalToken {
     type ParserContext;
     fn postprocess(&self, complete_stack: &[Token<Self::ParserContext>], my_index: usize, origin_tree: &mut Tokenizer<Self::ParserContext>) -> Token<Self::ParserContext>;
-    fn as_ctx(self) -> Self::ParserContext;
+    fn as_ctx(&self) -> Self::ParserContext;
 }
 
 pub trait FunctionTokenParse {
@@ -63,26 +65,24 @@ pub trait FunctionTokenParse {
     fn parse(tokenizer: &Tokenizer<Self::ParserContext>, current_token: Token<Self::ParserContext>, stack: &[Token<Self::ParserContext>], next: &[u8], cursor: &mut usize) -> Box<dyn FunctionalToken<ParserContext = Self::ParserContext>>;
 }
 
-pub enum PostProcResult<Ctx> {
-    Same,
-    Drop,
-    NewToken(Token<Ctx>)
-}
-
 pub enum Token<Ctx> {
-    // Token evaluates to a string
+    /// Token evaluates to a string.
     Str(Rc<String>),
 
-    // Token evaluates to a character
+    /// Token evaluates to a character.
     Char(char),
 
-    // // Token evaluates to a number
+    // /// Token evaluates to a number.
     // Number(Number),
 
-    // Token evaluates to a functional token
+    /// Token evaluates to a functional token
     Func(Box<dyn FunctionalToken<ParserContext = Ctx>>),
 
-    // Token is blank and can be discarded
+    /// Token evaluates to a context value.
+    /// Useful for escaping the tokenizer stack after postprocessing.
+    ReturnCtx(Ctx),
+
+    // Token is blank and can be discarded.
     Blank
 }
 
@@ -96,6 +96,16 @@ impl<T> Token<T> {
             ""
         }
     }
+
+    pub fn type_str(&self) -> &'static str {
+        match self {
+            Token::Str(_) => "string",
+            Token::Char(_) => "char",
+            Token::Func(_) => "function",
+            Token::ReturnCtx(_) => "ReturnCtx",
+            Token::Blank => "blank",
+        }
+    }
 }
 
 pub enum Relation<Ctx> {
@@ -106,16 +116,38 @@ pub enum Relation<Ctx> {
 
 #[derive(Default)]
 pub struct Stack<Ctx> {
-    stack: Vec<Token<Ctx>>
+    pub stack: Vec<Token<Ctx>>
+}
+
+pub enum StackRef {
+    Single(usize),
+    Range(Range<usize>)
 }
 
 impl<Ctx> Stack<Ctx> {
-    pub fn eval(&self, origin_tree: &mut Tokenizer<Ctx>) {
+    pub fn eval(&self, origin_tree: &mut Tokenizer<Ctx>) -> Stack<Ctx> {
+        let mut stack = vec![];
         for (index, token) in self.stack.iter().enumerate() {
             if let Token::Func(functoken) = token {
-                functoken.postprocess(&self.stack, index, origin_tree);
+                stack.push(functoken.postprocess(&self.stack, index, origin_tree));
             }
         }
+        Stack {
+            stack
+        }
+    }
+
+    pub fn print_content(&self, f: &dyn Fn(&Ctx) -> String) {
+        for t in &self.stack {
+            match t {
+                Token::Str(s) => print!("{} ", s),
+                Token::Char(c) => print!("{} ",c.clone()),
+                Token::Func(_) => print!("Function "),
+                Token::ReturnCtx(ctx) => print!("{} ",f(ctx)),
+                Token::Blank => print!("[blank] "),
+            };
+        }
+        println!("===end===");
     }
 }
 
@@ -139,9 +171,7 @@ impl<Ctx> Tokenizer<Ctx> {
                     Relation::CharIsToken(behaviour) => {
                         cursor += 1;
                         // Skip whitespace
-                        while (src[cursor] as char).is_ascii_whitespace() {
-                            cursor += 1;
-                        }
+                        skip_whitespace(src, &mut cursor);
                         if let Some(f) = behaviour {
                             result_tokens.push(Token::Func((f)(self, Token::Char(cur_c), &result_tokens, src, &mut cursor)));
                         }else{
@@ -234,10 +264,13 @@ impl<Ctx> Tokenizer<Ctx> {
 
             // Take the token as a basic string or char token
             let raw_token = (&src[token_start..cursor]).to_vec();  
+            println!("raw token: {:?}", raw_token);
             if raw_token.len() > 1 {
                 result_tokens.push(Token::Str(Rc::new(String::from_utf8(raw_token).expect("UTF-8 Parsing error!"))));
-            } else {
+            } else if raw_token.len() == 1 {
                 result_tokens.push(Token::Char(raw_token[0] as char));    
+            } else {
+                // raw tokens are empty, probably hit end
             }
                         
             // If left off on a whitespace, skip over it.

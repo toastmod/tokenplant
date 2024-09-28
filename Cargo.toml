@@ -5,3 +5,4 @@ members = [ "mipscc",
 
 [workspace.dependencies]
 tokenplant = { path = "tokenplant" }
+rcslice = { git = "https://github.com/toastmod/rcslice.git" }

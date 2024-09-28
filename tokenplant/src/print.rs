@@ -45,7 +45,7 @@ impl FunctionalToken for Print {
         Token::Blank
     }
 
-    fn as_ctx(self) -> Self::ParserContext {
+    fn as_ctx(&self) -> Self::ParserContext {
         () 
     }
 }

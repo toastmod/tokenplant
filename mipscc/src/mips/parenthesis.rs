@@ -1,7 +1,9 @@
+use std::rc::Rc;
+
 use crate::{tokenizer::{skip_whitespace, FunctionTokenParse, FunctionalToken, Stack, Token, Tokenizer}, Closure, MIPSCCToken};
 
 pub struct Parenthesis {
-    inner_stack: Stack<MIPSCCToken>
+    inner_stack: Rc<Stack<MIPSCCToken>>
 }
 
 impl FunctionTokenParse for Parenthesis {
@@ -26,7 +28,7 @@ impl FunctionTokenParse for Parenthesis {
         while *cursor < next.len() {
             if next[*cursor] as char == end_parenthesis {
                 return Box::new(Self {
-                    inner_stack: tokenizer.tokenize(&next[c..*cursor]),
+                    inner_stack: Rc::new(tokenizer.tokenize(&next[c..*cursor])),
                 })
             } else {
                 *cursor += 1;
@@ -50,9 +52,9 @@ impl FunctionalToken for Parenthesis {
         Token::Blank
     }
 
-    fn as_ctx(self) -> Self::ParserContext {
+    fn as_ctx(&self) -> Self::ParserContext {
         MIPSCCToken::Closure(Closure {
-            body: self.inner_stack,
+            body: Rc::clone(&self.inner_stack),
         }) 
     }
 }

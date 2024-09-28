@@ -4,6 +4,7 @@ use std::{default, rc::Rc};
 
 pub use parenthesis::*;
 pub use decl::*;
+use tokenplant::tokenizer::StackRef;
 
 use crate::tokenizer::{Stack, Token, Tokenizer};
 
@@ -12,19 +13,37 @@ use crate::tokenizer::{Stack, Token, Tokenizer};
 pub enum Operator {
     #[default]
     ADD,
-    SUB
+    SUB,
+    EQ
 }
 
 
 #[derive(Default)]
 pub struct Closure {
-    pub body: Stack<MIPSCCToken>
+    pub body: Rc<Stack<MIPSCCToken>>
+}
+
+impl Closure {
+    pub fn clone_ref(&self) -> Self {
+        Self {
+            body: Rc::clone(&self.body)
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct Declaration {
     pub ty: &'static str,
     pub name: Rc<String>
+}
+
+impl Declaration {
+    pub fn clone_ref(&self) -> Self {
+        Self {
+            ty: self.ty,
+            name: Rc::clone(&self.name),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -48,7 +67,7 @@ pub enum MIPSCCToken {
     /// A variable declaration.
     VarDecl {
         declaration: Declaration,
-        expr: Stack<MIPSCCToken> 
+        expr: StackRef
     },
 
     /// A function consisting of a declaration and two closures.
